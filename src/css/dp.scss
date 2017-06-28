@@ -22,6 +22,11 @@
     table {
         width: 100%;
     }
+    ul {
+      padding: 0;
+      margin: 0;
+      list-style-type: none;
+    }
     .dp-prev,
     .dp-next {
         cursor: pointer;
@@ -113,6 +118,61 @@
             padding: 5px 0;
             width: 25%;
         }
+    }
+    .dp-timer {
+      margin: 10px 15px 0;
+      border-top: 1px #eee solid;
+      padding-top: 10px;
+      .bar {
+        height: 2px;
+        background: #bbb;
+        position: relative;
+      }
+      .handle {
+        width: 12px;
+        height: 12px;
+        border-radius: 100%;
+        background: $mainColor;
+        position: absolute;
+        top: -5px;
+        transform: translate(-6px, 0);
+        cursor: pointer;
+        &:hover {
+          box-shadow: 0 0 0 2px $mainColor;
+        }
+      }
+    }
+    .dp-time {
+      text-align: center;
+      font-size: 16px;
+      margin-bottom: 10px;
+      & > div {
+        display: inline-block;
+        height: 20px;
+        overflow: hidden;
+        vertical-align: middle;
+        ul {
+          transition: all 0.1s;
+        }
+      }
+    }
+    .dp-timer-text {
+      margin-top: 15px;
+      height: 20px;
+      position: relative;
+      span {
+        position: absolute;
+        top: 0;
+        margin-left: -15px;
+        &:before {
+          content: "";
+          height: 5px;
+          border-left: 1px #555 solid;
+          position: absolute;
+          top: -5px;
+          left: 50%;
+        }
+      }
     }
     .dp-ft {
         margin-top: 10px;
