@@ -19,23 +19,19 @@ class DP {
       throw new Error('Not target element founded ...');
     }
 
-    this.date = this.date || new Date();
-    this.viewDate = [this.date.getFullYear(), this.date.getMonth() + 1, this.date.getDate()];
-    this.value = [this.date.getFullYear(), this.date.getMonth() + 1, this.date.getDate()];
+    const now = new Date();
+    this.date = utils.getDate(now);
+    this.viewDate = utils.shallowCopy(this.date);
+    this.value = utils.shallowCopy(this.date);
+    if (this.minDate) {
+      this.minDate = utils.getDate(this.minDate);
+    }
+    if (this.maxDate) {
+      this.maxDate = utils.getDate(this.maxDate);
+    }
+    this.animate = {};
     this.initDom();
     this.initEvent();
-  }
-  getElementOffset(ele) {
-    const offset = {
-      x: 0,
-      y: 0
-    }
-    while(ele) {
-      offset.x += ele.offsetLeft;
-      offset.y += ele.offsetTop;
-      ele = ele.offsetParent;
-    }
-    return offset;
   }
   initDom() {
     this.doms = {};
@@ -65,7 +61,7 @@ class DP {
       //   '<button>确定</button>',
       // '</div>'
     ].join('');
-    const targetOffset = this.getElementOffset(this.target);
+    const targetOffset = utils.getOffset(this.target);
     dpBox.style.left = targetOffset.x + 'px';
     dpBox.style.top = this.target.offsetHeight + targetOffset.y + 'px';
     document.body.appendChild(dpBox);
@@ -89,7 +85,7 @@ class DP {
     const
       date = new Date(this.viewDate.join('/')),
       table = document.createElement('table'),
-      today = this.date.getDate();
+      today = this.date[2];
 
     table.className = 'dp-date-table';
 
@@ -130,9 +126,33 @@ class DP {
       if (i > firstDay - 2 && i < totalDays + firstDay - 1) {
         col.className = "pick";
         col.setAttribute('data', days[i]);
-        this.selectDay(col);
+
+
+        if (utils.compareDate(this.viewDate.slice(0, 2).concat(days[i]), this.value, true) === 0) {
+          col.classList.add('current');
+        }
+        let disabled = false;
+        if (this.minDate) {
+          if (utils.compareDate(this.viewDate.slice(0, 2).concat(days[i]), this.minDate, true) < 0) {
+            disabled = true;
+          }
+        }
+
+        if (this.maxDate) {
+          if (utils.compareDate(this.viewDate.slice(0, 2).concat(days[i]), this.maxDate, true) > 0) {
+            disabled = true;
+          }
+        }
+
+        if (disabled) {
+          col.classList.add('disabled');
+        } else {
+          this.selectDay(col);
+        }
+
       }
-      if (today === i + 1) {
+
+      if (utils.compareDate(this.viewDate.slice(0, 2).concat(days[i]), this.date, true) === 0) {
         col.classList.add('today');
         col.innerHTML = '今天';
       } else {
@@ -142,6 +162,7 @@ class DP {
 
     this.doms.body.innerHTML = '';
     this.doms.body.appendChild(table);
+    this.changeHead();
   }
 
   createMonthTable() {
@@ -155,7 +176,7 @@ class DP {
       }
       col = row.insertCell();
       col.classList.add('pick');
-      if (this.date.getMonth() == i ) {
+      if (utils.compareDate([this.viewDate[0], i + 1], this.value) === 0) {
         col.classList.add('current');
       }
       col.setAttribute('data', i + 1);
@@ -165,6 +186,7 @@ class DP {
 
     this.doms.body.innerHTML = '';
     this.doms.body.appendChild(table);
+    this.changeHead();
   }
 
   createYearTable() {
@@ -181,7 +203,7 @@ class DP {
         }
         col = row.insertCell();
         col.classList.add('pick');
-        if (startYear + i === this.viewDate[0]) {
+        if (startYear + i === this.value[0]) {
           col.classList.add('current');
         }
         col.setAttribute('data', startYear + i);
@@ -190,6 +212,7 @@ class DP {
       }
       this.doms.body.innerHTML = '';
       this.doms.body.appendChild(table);
+      this.changeHead();
   }
 
   initEvent() {
@@ -202,21 +225,17 @@ class DP {
             this.viewDate[0] -= 1;
             this.viewDate[1] = 12;
           }
-          this.value[0] = this.viewDate[0];
-          this.value[1] = this.viewDate[1];
           this.createDateTable();
           break;
         case DP.type.month:
           this.viewDate[0] -= 1;
           this.createMonthTable();
-          this.value[0] = this.viewDate[0];
-          this.value[1] = this.viewDate[1];
           break;
         case DP.type.year:
           this.viewDate[0] -= 10;
           this.createYearTable();
       }
-      this.changeHead();
+
     });
 
     this.doms.next.addEventListener('click', (e) => {
@@ -229,14 +248,10 @@ class DP {
             this.viewDate[1] = 1;
           }
           this.createDateTable();
-          this.value[0] = this.viewDate[0];
-          this.value[1] = this.viewDate[1];
           break;
         case DP.type.month:
           this.viewDate[0] += 1;
           this.createMonthTable();
-          this.value[0] = this.viewDate[0];
-          this.value[1] = this.viewDate[1];
           break;
         case DP.type.year:
           this.viewDate[0] += 10;
@@ -276,6 +291,8 @@ class DP {
     ele.addEventListener('click', (e) => {
       e.stopPropagation();
       this.value[2] = +ele.getAttribute('data');
+      this.value[1] = this.viewDate[1];
+      this.value[0] = this.viewDate[0];
       this.target.value = this.value.join('-');
       this.hidden();
     });
@@ -285,9 +302,7 @@ class DP {
     ele.addEventListener('click', (e) => {
       e.stopPropagation();
       this.viewDate[1] = +ele.getAttribute('data')
-      this.value[1] = +ele.getAttribute('data');
       this.createDateTable();
-      this.changeHead();
     });
   }
 
@@ -295,30 +310,40 @@ class DP {
     ele.addEventListener('click', (e) => {
       e.stopPropagation();
       this.viewDate[0] = +ele.getAttribute('data');
-      this.value[0] = +ele.getAttribute('data');
       this.createMonthTable();
-      this.changeHead();
     });
   }
 
   show() {
-    const container = this.doms.container
+    if (getComputedStyle(this.doms.container).display === 'block') {
+      return;
+    }
+    this.animate.hidden && this.animate.hidden();
+    const container = this.doms.container;
     container.style.display = 'block';
     container.classList.add('dp-show');
-    container.addEventListener('animationend', function show() {
-      this.removeEventListener('animationend', show);
-      this.classList.toggle('dp-show');
-    });
+    this.viewDate = utils.shallowCopy(this.value);
+    this.createDateTable();
+    const show = this.animate.show = function () {
+      container.removeEventListener('animationend', show);
+      container.classList.remove('dp-show');
+    }
+    container.addEventListener('animationend', show);
   }
 
   hidden() {
+    if (getComputedStyle(this.doms.container).display === 'none') {
+      return;
+    }
+    this.animate.show && this.animate.show();
     const container = this.doms.container;
     container.classList.add('dp-hidden');
-    container.addEventListener('animationend', function hidden() {
-      this.removeEventListener('animationend', hidden);
-      this.style.display = 'none';
-      this.classList.toggle('dp-hidden');
-    });
+    const hidden = this.animate.hidden = function () {
+      container.removeEventListener('animationend', hidden);
+      container.style.display = 'none';
+      container.classList.remove('dp-hidden');
+    }
+    container.addEventListener('animationend', hidden);
   }
 }
 
@@ -331,7 +356,8 @@ DP.type = {
 DP.week = ['一', '二', '三', '四', '五', '六', '日'];
 
 new DP('#dp', {
-  format: 'yyyy-MM-dd'
+  minDate: new Date(2017, 5, 1),
+  maxDate: new Date(2017, 6, 0)
 });
 
 module.exports = DP;

@@ -35,22 +35,20 @@
     td {
         text-align: center;
         color: #ccc;
+        cursor: default;
         &.pick {
             color: #48576a;
             cursor: pointer;
         }
-        &.pick:not(.current):not(.disalbed):hover {
+        &.pick:not(.current):not(.disabled):hover {
             background: $tdHover;
         }
-        &.disalbed {
+        &.disabled {
             background: #f4f4f4;
             cursor: not-allowed;
             color: #ccc;
         }
-        &.current {
-            background: $mainColor;
-            color: white;
-        }
+
         &.range {
             background: $range;
         }
@@ -66,6 +64,10 @@
                 border-top: 0.5em $mainColor solid;
                 border-left: 0.5em transparent dashed;
             }
+        }
+        &.current {
+            background: $mainColor;
+            color: white;
         }
     }
     .dp-hd {
