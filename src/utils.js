@@ -32,7 +32,7 @@ export default {
   shallowCopy(obj) {
     return JSON.parse(JSON.stringify(obj));
   },
-  getDate(date) {
-    return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+  getDateTime(date) {
+    return [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes()]
   }
 }

@@ -2,10 +2,20 @@ import './css/dp.scss';
 import utils from './utils';
 
 class DP {
-  constructor(target, opts) {
+  constructor(target, opts = {}) {
+    this.setting = {
+      date: new Date(),
+      minDate: null,
+      maxDate: null,
+      onComplete: null,
+      showDate: true,
+      showTime: true
+    }
+
     this.target = target;
-    for (const key in opts) {
-      this[key] = opts[key];
+    const setting = Object.assign({}, this.setting, opts)
+    for (const key in setting) {
+      this[key] = setting[key];
     }
     this.init();
   }
@@ -20,14 +30,15 @@ class DP {
     }
 
     const now = new Date();
-    this.date = utils.getDate(now);
-    this.viewDate = utils.shallowCopy(this.date);
-    this.value = utils.shallowCopy(this.date);
+    this.date = utils.getDateTime(now);
+    this.viewDate = (this.target.value && this.target.value.split(/-|\s|:/)) || utils.shallowCopy(this.date);
+    this.viewDate = this.viewDate.map(x => +x);
+    this.value = utils.shallowCopy(this.viewDate);
     if (this.minDate) {
-      this.minDate = utils.getDate(this.minDate);
+      this.minDate = utils.getDateTime(this.minDate);
     }
     if (this.maxDate) {
-      this.maxDate = utils.getDate(this.maxDate);
+      this.maxDate = utils.getDateTime(this.maxDate);
     }
     this.animate = {};
     this.initDom();
@@ -35,11 +46,11 @@ class DP {
   }
   initDom() {
     this.doms = {};
-    const dpBox = this.doms.container = document.createElement('div');
-    this.dpBox = dpBox;
-    // dpBox.style.display = 'none';
-    dpBox.className = 'dp-container';
-    dpBox.innerHTML = [
+    const container = this.doms.container = document.createElement('div');
+    this.container = container;
+    container.style.display = 'none';
+    container.className = 'dp-container';
+    const doms = [
       '<div class="dp-hd">',
       '<div class="dp-prev">',
       '<svg><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"></path></svg>',
@@ -54,7 +65,13 @@ class DP {
       '</div>',
       '<div class="dp-bd">',
       '</div>',
-      '<div class="dp-timer">',
+
+
+    ];
+
+    if (this.showTime) {
+      doms.push(      '<div class="dp-timer">',
+      '<input type="text" class="dp-time-input" style="display: none;" />',
       '<div class="dp-time"><div class="hour"></div>:<div class="minite"></div></div>',
       '<div class="bar"><div class="handle" style="left: 0;"></div></div>',
       '<div class="dp-timer-text">',
@@ -64,27 +81,40 @@ class DP {
       '<span style="left: 75%">18:00</span>',
       '<span style="left: 100%">23:59</span>',
       '</div>',
-      '</div>',
-      '<div class="dp-ft">',
-      '<button>取消</button>',
-      '<button>清除</button>',
-      '<button>此刻</button>',
-      '<button>确定</button>',
-      '</div>'
-    ].join('');
+      '</div>',);
+    }
+
+    doms.push('<div class="dp-ft">',
+      '<button class="dp-cancle">取消</button>',
+      '<button class="dp-clear">清除</button>',
+      '<button class="dp-now">此刻</button>',
+      '<button class="dp-confirm">确定</button>',
+      '</div>');
+
+    container.innerHTML = doms.join('');
     const targetOffset = utils.getOffset(this.target);
-    dpBox.style.left = targetOffset.x + 'px';
-    dpBox.style.top = this.target.offsetHeight + targetOffset.y + 'px';
-    document.body.appendChild(dpBox);
-    this.doms.body = dpBox.querySelector('.dp-bd');
-    this.doms.prev = dpBox.querySelector('.dp-prev');
-    this.doms.next = dpBox.querySelector('.dp-next');
-    this.doms.year = dpBox.querySelector('.dp-year');
-    this.doms.month = dpBox.querySelector('.dp-month');
-    this.doms.hour = dpBox.querySelector('.hour');
-    this.doms.minite = dpBox.querySelector('.minite');
-    this.doms.timerBar = dpBox.querySelector('.dp-timer .bar');
-    this.doms.barHandle = dpBox.querySelector('.dp-timer .handle');
+    container.style.left = targetOffset.x + 'px';
+    container.style.top = this.target.offsetHeight + targetOffset.y + 'px';
+    document.body.appendChild(container);
+
+    this.doms = {
+      body: container.querySelector('.dp-bd'),
+      prev: container.querySelector('.dp-prev'),
+      next: container.querySelector('.dp-next'),
+      year: container.querySelector('.dp-year'),
+      month: container.querySelector('.dp-month'),
+      hour: container.querySelector('.hour'),
+      minite: container.querySelector('.minite'),
+      timeInput: container.querySelector('.dp-time-input'),
+      time: container.querySelector('.dp-time'),
+      timerBar: container.querySelector('.dp-timer .bar'),
+      barHandle: container.querySelector('.dp-timer .handle'),
+      cancle: container.querySelector('.dp-cancle'),
+      clear: container.querySelector('.dp-clear'),
+      now: container.querySelector('.dp-now'),
+      confirm: container.querySelector('.dp-confirm')
+    }
+
     this.changeHead();
     this.createDateTable();
     this.initHour();
@@ -92,6 +122,9 @@ class DP {
   }
 
   initHour() {
+    if (!this.showTime) {
+      return;
+    }
     const ul = this.doms.hourBox = document.createElement('ul');
     for (let i = 0; i <= 24; i++ ) {
       const li = document.createElement('li');
@@ -102,6 +135,9 @@ class DP {
   }
 
   initMinite() {
+    if (!this.showTime) {
+      return;
+    }
     const ul = this.doms.miniteBox = document.createElement('ul');
     for (let i = 0; i < 60; i++ ) {
       const li = document.createElement('li');
@@ -111,6 +147,18 @@ class DP {
     this.doms.minite.appendChild(ul);
   }
 
+  initTimer() {
+    if (!this.showTime) {
+      return;
+    }
+    const hour = this.viewDate[3];
+    const minite = this.viewDate[4];
+    this.doms.barHandle.style.left = (hour * 60 + minite) / 1440 * this.doms.timerBar.offsetWidth+ 'px';
+    this.doms.hourBox.style.transform = 'translate(0, ' + (-hour * 20) + 'px)';
+    this.doms.miniteBox.style.transform = 'translate(0, ' + (-minite * 20) + 'px)';
+    this.doms.timeInput.value = utils.insertZero(hour) + ':' + utils.insertZero(minite);
+  }
+
   changeHead() {
     this.doms.year.innerHTML = this.viewDate[0] + '年';
     this.doms.month.innerHTML = utils.insertZero(this.viewDate[1]) + '月';
@@ -118,11 +166,13 @@ class DP {
 
   createDateTable() {
     this.viewType = DP.type.date;
-
+    let date = utils.shallowCopy(this.viewDate);
     const
-      date = new Date(this.viewDate.join('/')),
       table = document.createElement('table'),
       today = this.date[2];
+
+    date[1]--;
+    date = new Date(...date);
 
     table.className = 'dp-date-table';
 
@@ -133,9 +183,8 @@ class DP {
     date.setMonth(date.getMonth() + 1);
     date.setDate(0)
     const totalDays = date.getDate();
-    let row, col;
+    let row, col, days = [];
 
-    let days = [];
     for (let i = 0; i < totalDays; i++) {
       days.push(i + 1);
     }
@@ -143,6 +192,7 @@ class DP {
     for (let i = 0; i < firstDay - 1; i++) {
       days.unshift(lastMonthTotalDays - i);
     }
+
     for (let i = 0, j = 7 - days.length % 7; i < j; i++) {
       days.push(i + 1);
     }
@@ -159,12 +209,12 @@ class DP {
       if (i % 7 === 0) {
         row = table.insertRow();
       }
+
       col = row.insertCell();
+      col.innerHTML = days[i];
       if (i > firstDay - 2 && i < totalDays + firstDay - 1) {
         col.className = "pick";
         col.setAttribute('data', days[i]);
-
-
         if (utils.compareDate(this.viewDate.slice(0, 2).concat(days[i]), this.value, true) === 0) {
           col.classList.add('current');
         }
@@ -187,13 +237,10 @@ class DP {
           this.selectDay(col);
         }
 
-      }
-
-      if (utils.compareDate(this.viewDate.slice(0, 2).concat(days[i]), this.date, true) === 0) {
-        col.classList.add('today');
-        col.innerHTML = '今天';
-      } else {
-        col.innerHTML = days[i];
+        if (utils.compareDate(this.viewDate.slice(0, 2).concat(days[i]), this.date, true) === 0) {
+          col.classList.add('today');
+          col.innerHTML = '今天';
+        }
       }
     }
 
@@ -250,6 +297,21 @@ class DP {
     this.doms.body.innerHTML = '';
     this.doms.body.appendChild(table);
     this.changeHead();
+  }
+
+  getValue() {
+    if (!this.onComplete) {
+      let value = utils.shallowCopy(this.value);
+      value = value.map((x, index) => {
+        if (index === 0) {
+          return x;
+        }
+        return utils.insertZero(x);
+      });
+      return value.slice(0, 3).join('-') + (this.showTime ? (' ' + value.slice(3).join(':')) : '');
+    } else {
+      return this.onComplete(...this.value);
+    }
   }
 
   initEvent() {
@@ -312,12 +374,33 @@ class DP {
       this.show();
     });
 
-    this.doms.container.addEventListener('click', (e) => {
+    this.container.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (this.showTime) {
+        this.doms.time.style.display = 'block';
+        this.doms.timeInput.style.display = 'none';
+      }
     });
 
-    this.doms.container.addEventListener('mousedown', (e) => {
-      e.stopPropagation();
+    this.doms.cancle.addEventListener('click', () => {
+      this.hidden();
+    });
+
+    this.doms.clear.addEventListener('click', () => {
+      this.target.value = '';
+      this.hidden();
+    });
+
+    this.doms.now.addEventListener('click', () => {
+      this.value = utils.shallowCopy(this.date);
+      this.viewDate = utils.shallowCopy(this.date);
+      this.createDateTable();
+    });
+
+    this.doms.confirm.addEventListener('click', () => {
+      this.value = utils.shallowCopy(this.viewDate);
+      this.target.value = this.getValue();
+      this.hidden();
     });
 
     document.documentElement.addEventListener('click', (e) => {
@@ -331,15 +414,52 @@ class DP {
       this.hidden();
     });
 
+    if (this.showTime) {
+      this.initTimerEvent();
+    }
+  }
+
+  initTimerEvent() {
     let
       mouseDown = false,
       sP = {},
       eP = {},
       eleLeft,
-      barWitdth = this.doms.timerBar.offsetWidth;
+      barWitdth;
+
+    this.doms.time.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.doms.time.style.display = 'none';
+      this.doms.timeInput.style.display = 'block';
+      this.doms.timeInput.focus();
+    });
+
+    this.doms.timeInput.addEventListener('keyup', (e) => {
+      if (e.keyCode ===  13) {
+        this.doms.time.style.display = 'block';
+        this.doms.timeInput.style.display = 'none';
+        let timeStr = this.doms.timeInput.value.split(/:|：/),
+          hour = +timeStr[0],
+          minite = +timeStr[1];
+
+        if (!hour || !minite || +hour > 23 || +hour < 0 || +minite > 59 || +minite < 0) {
+          hour = 0;
+          minite = 0;
+        }
+
+        this.viewDate[3] = hour;
+        this.viewDate[4] = minite;
+
+        this.initTimer();
+      }
+    });
 
     this.doms.barHandle.addEventListener('mousedown', (e) => {
       e.stopPropagation();
+      e.preventDefault();
+      if (!barWitdth) {
+        barWitdth = this.doms.timerBar.offsetWidth;
+      }
       mouseDown = true;
       eleLeft = parseFloat(getComputedStyle(this.doms.barHandle).left);
       sP = {
@@ -350,6 +470,7 @@ class DP {
 
     document.documentElement.addEventListener('mousemove', (e) => {
       e.stopPropagation();
+      e.preventDefault();
       if (!mouseDown) {
         return;
       }
@@ -367,26 +488,33 @@ class DP {
         hour = 23;
         minite = 59;
       }
+      this.viewDate[3] = hour;
+      this.viewDate[4] = minite;
       this.doms.hourBox.style = 'transform: translate(0,' + -hour * 20 + 'px)';
       this.doms.miniteBox.style = 'transform: translate(0,' + -minite * 20 + 'px)';
       this.doms.barHandle.style.left = left + 'px';
-
     });
 
     document.documentElement.addEventListener('mouseup', (e) => {
-      e.stopPropagation();
       mouseDown = false;
     });
-
   }
 
   selectDay(ele) {
     ele.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.value[2] = +ele.getAttribute('data');
-      this.value[1] = this.viewDate[1];
+      this.viewDate[2] = +ele.getAttribute('data');
       this.value[0] = this.viewDate[0];
-      this.target.value = this.value.join('-');
+      this.value[1] = this.viewDate[1];
+      this.value[2] = this.viewDate[2];
+      this.createDateTable();
+    });
+
+    ele.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      this.viewDate[2] = +ele.getAttribute('data');
+      this.value = utils.shallowCopy(this.viewDate);
+      this.target.value = this.getValue();
       this.hidden();
     });
   }
@@ -408,16 +536,17 @@ class DP {
   }
 
   show() {
-    if (getComputedStyle(this.doms.container).display === 'block') {
+    if (getComputedStyle(this.container).display === 'block') {
       return;
     }
     this.animate.hidden && this.animate.hidden();
-    const container = this.doms.container;
+    const container = this.container;
     container.style.display = 'block';
     container.classList.add('dp-show');
-    this.viewDate = utils.shallowCopy(this.value);
+    this.viewDate = utils.shallowCopy(this.viewDate);
     this.createDateTable();
-    const show = this.animate.show = function() {
+    this.initTimer();
+    const show = this.animate.show = () => {
       container.removeEventListener('animationend', show);
       container.classList.remove('dp-show');
     }
@@ -425,11 +554,11 @@ class DP {
   }
 
   hidden() {
-    if (getComputedStyle(this.doms.container).display === 'none') {
+    if (getComputedStyle(this.container).display === 'none') {
       return;
     }
     this.animate.show && this.animate.show();
-    const container = this.doms.container;
+    const container = this.container;
     container.classList.add('dp-hidden');
     const hidden = this.animate.hidden = function() {
       container.removeEventListener('animationend', hidden);
@@ -447,10 +576,5 @@ DP.type = {
 }
 
 DP.week = ['一', '二', '三', '四', '五', '六', '日'];
-
-new DP('#dp', {
-  minDate: new Date(2017, 5, 1),
-  maxDate: new Date(2017, 6, 0)
-});
 
 module.exports = DP;

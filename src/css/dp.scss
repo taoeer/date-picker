@@ -127,6 +127,7 @@
         height: 2px;
         background: #bbb;
         position: relative;
+        margin-top: 10px;
       }
       .handle {
         width: 12px;
@@ -145,16 +146,28 @@
     .dp-time {
       text-align: center;
       font-size: 16px;
-      margin-bottom: 10px;
       & > div {
         display: inline-block;
         height: 20px;
         overflow: hidden;
         vertical-align: middle;
         ul {
-          transition: all 0.1s;
+          transition: all 0.3s;
         }
       }
+      &:hover {
+        color: $mainColor;
+      }
+    }
+    .dp-time-input {
+      width: 100%;
+      text-align: center;
+      font-size: 16px;
+      height: 21px;
+      color: #48576a;
+      padding: 0;
+      border: none;
+      outline: none;
     }
     .dp-timer-text {
       margin-top: 15px;
@@ -189,6 +202,10 @@
             padding: 5px 0;
             &:not(:last-child) {
                 margin-right: 10px;
+            }
+            &:hover {
+              border-color: $mainColor;
+              color: $mainColor;
             }
         }
     }
